@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import json
+from pathlib import Path
+
+from lora_sim.domain.channel import ChannelModel
+from lora_sim.domain.enums import NodeRole
+from lora_sim.domain.node import Node, TrafficProfile
+from lora_sim.domain.radio import RadioConfig
+from lora_sim.models.retry import RetryPolicy
+
+
+@dataclass(slots=True)
+class Scenario:
+    name: str
+    duration_seconds: float
+    seed: int
+    channel: ChannelModel
+    retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
+    nodes: list[Node] = field(default_factory=list)
+
+    def validate(self) -> None:
+        if not self.nodes:
+            raise ValueError("Scenario must define at least one node")
+        gateway_count = sum(node.role == NodeRole.GATEWAY for node in self.nodes)
+        if gateway_count == 0:
+            raise ValueError("Scenario must define at least one gateway node")
+        for node in self.nodes:
+            node.radio.validate()
+            if node.traffic and node.traffic.packet_count < 0:
+                raise ValueError(f"Node {node.node_id} has negative packet count")
+
+    def node_map(self) -> dict[str, Node]:
+        return {node.node_id: node for node in self.nodes}
+
+
+def load_scenario(path: str | Path) -> Scenario:
+    raw = json.loads(Path(path).read_text())
+    channel = ChannelModel(**raw.get("channel", {}))
+    retry_policy = RetryPolicy(**raw.get("retry_policy", {}))
+    nodes = [_parse_node(node_raw) for node_raw in raw["nodes"]]
+    scenario = Scenario(
+        name=raw["name"],
+        duration_seconds=raw.get("duration_seconds", 60.0),
+        seed=raw.get("seed", 42),
+        channel=channel,
+        retry_policy=retry_policy,
+        nodes=nodes,
+    )
+    scenario.validate()
+    return scenario
+
+
+def _parse_node(raw: dict[str, object]) -> Node:
+    traffic_raw = raw.get("traffic")
+    traffic = TrafficProfile(**traffic_raw) if isinstance(traffic_raw, dict) else None
+    return Node(
+        node_id=str(raw["node_id"]),
+        x_m=float(raw.get("x_m", 0.0)),
+        y_m=float(raw.get("y_m", 0.0)),
+        role=NodeRole(str(raw.get("role", "end_device"))),
+        radio=RadioConfig(**raw.get("radio", {})),
+        traffic=traffic,
+        tags={str(key): str(value) for key, value in raw.get("tags", {}).items()},
+    )

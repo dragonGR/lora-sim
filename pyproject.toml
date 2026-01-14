@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lora-sim"
+version = "0.1.0"
+description = "Deterministic LoRa network simulation toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Alex Tsanis" }]
+dependencies = []
+
+[project.scripts]
+lora-sim = "lora_sim.app.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
