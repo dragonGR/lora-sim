@@ -1,0 +1,67 @@
+{
+  "name": "Multi node collision stress",
+  "seed": 7,
+  "duration_seconds": 20,
+  "channel": {
+    "noise_floor_dbm": -118.0,
+    "path_loss_exponent": 2.7,
+    "interference_probability": 0.05,
+    "corruption_probability": 0.02,
+    "capture_threshold_db": 10.0,
+    "snr_margin_db": 1.0
+  },
+  "retry_policy": {
+    "max_attempts": 3,
+    "backoff_seconds": 0.3
+  },
+  "nodes": [
+    {
+      "node_id": "sensor-a",
+      "role": "end_device",
+      "x_m": 0,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 8,
+        "tx_power_dbm": 14
+      },
+      "traffic": {
+        "packet_count": 6,
+        "interval_seconds": 1.0,
+        "payload_size_bytes": 16,
+        "destination_id": "gateway"
+      }
+    },
+    {
+      "node_id": "sensor-b",
+      "role": "end_device",
+      "x_m": 40,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 8,
+        "tx_power_dbm": 14
+      },
+      "traffic": {
+        "packet_count": 6,
+        "interval_seconds": 1.0,
+        "payload_size_bytes": 16,
+        "destination_id": "gateway"
+      }
+    },
+    {
+      "node_id": "gateway",
+      "role": "gateway",
+      "x_m": 1500,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      }
+    }
+  ]
+}

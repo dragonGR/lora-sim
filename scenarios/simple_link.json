@@ -1,0 +1,48 @@
+{
+  "name": "Simple link baseline",
+  "seed": 42,
+  "duration_seconds": 20,
+  "channel": {
+    "noise_floor_dbm": -118.0,
+    "path_loss_exponent": 2.4,
+    "interference_probability": 0.0,
+    "corruption_probability": 0.0,
+    "snr_margin_db": 0.0
+  },
+  "retry_policy": {
+    "max_attempts": 2,
+    "backoff_seconds": 0.2
+  },
+  "nodes": [
+    {
+      "node_id": "sensor-a",
+      "role": "end_device",
+      "x_m": 0,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      },
+      "traffic": {
+        "packet_count": 8,
+        "interval_seconds": 1.5,
+        "payload_size_bytes": 18,
+        "destination_id": "gateway"
+      }
+    },
+    {
+      "node_id": "gateway",
+      "role": "gateway",
+      "x_m": 1200,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      }
+    }
+  ]
+}
