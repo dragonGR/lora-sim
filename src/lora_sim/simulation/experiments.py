@@ -48,10 +48,43 @@ def sweep_scenario(
                 "delivery_rate": metrics.delivery_rate,
                 "collisions": metrics.collisions,
                 "retries": metrics.retries,
+                "total_energy_joules": metrics.total_energy_joules,
             }
         )
         value += step
     return results
+
+
+def monte_carlo_scenario(
+    scenario: Scenario | str,
+    iterations: int,
+    base_seed: int | None = None,
+) -> dict[str, object]:
+    loaded = load_scenario(scenario) if isinstance(scenario, str) else deepcopy(scenario)
+    summaries: list[dict[str, float | int]] = []
+    for offset in range(iterations):
+        variant = deepcopy(loaded)
+        variant.seed = (base_seed if base_seed is not None else loaded.seed) + offset
+        metrics = run_scenario(variant)
+        summaries.append(
+            {
+                "seed": variant.seed,
+                "delivery_rate": metrics.delivery_rate,
+                "collisions": metrics.collisions,
+                "retries": metrics.retries,
+                "total_energy_joules": metrics.total_energy_joules,
+            }
+        )
+    return {
+        "scenario_name": loaded.name,
+        "iterations": iterations,
+        "base_seed": base_seed if base_seed is not None else loaded.seed,
+        "mean_delivery_rate": _mean(item["delivery_rate"] for item in summaries),
+        "mean_collisions": _mean(item["collisions"] for item in summaries),
+        "mean_retries": _mean(item["retries"] for item in summaries),
+        "mean_total_energy_joules": _mean(item["total_energy_joules"] for item in summaries),
+        "runs": summaries,
+    }
 
 
 def set_parameter(scenario: Scenario, path: str, raw_value: float) -> None:
@@ -85,3 +118,10 @@ def _coerce_type(current_value: object, raw_value: float) -> object:
     if is_dataclass(current_value):
         return current_value
     return raw_value
+
+
+def _mean(values) -> float:
+    collected = list(values)
+    if not collected:
+        return 0.0
+    return sum(collected) / len(collected)

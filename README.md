@@ -7,6 +7,8 @@
 - Runs event-driven LoRa simulations with fixed seeds
 - Models nodes, radios, channels, retries, airtime, and ADR behavior
 - Supports multi-node scenarios and collision pressure
+- Tracks per-node radio energy for transmit, receive, and idle phases
+- Supports Monte Carlo runs for repeatable benchmark aggregates
 - Produces structured JSON or CSV outputs for analysis pipelines
 - Generates lightweight HTML reports for sharing run results
 
@@ -80,14 +82,20 @@ Compare two scenarios with the same seed:
 lora-sim compare scenarios/simple_link.json scenarios/multi_node_collision.json --seed 42
 ```
 
+Run a Monte Carlo batch:
+
+```bash
+lora-sim monte-carlo scenarios/multi_node_collision.json --iterations 20 --seed 100
+```
+
 ## Scenario format
 
 Scenario files are JSON documents that define:
 
 - simulation metadata such as `name`, `duration_seconds`, and `seed`
-- channel behavior such as `noise_floor_dbm`, `path_loss_exponent`, and interference settings
+- channel behavior such as `noise_floor_dbm`, `path_loss_exponent`, interference settings, and gateway demodulation capacity
 - retry policy with `max_attempts` and `backoff_seconds`
-- nodes with coordinates, role, radio settings, and optional traffic profiles
+- nodes with coordinates, role, radio settings, power profile, and optional traffic profiles
 
 See [simple_link.json](/home/alex/Projects/lora-sim/scenarios/simple_link.json) and [multi_node_collision.json](/home/alex/Projects/lora-sim/scenarios/multi_node_collision.json) for working examples.
 

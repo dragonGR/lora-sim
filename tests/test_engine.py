@@ -18,6 +18,7 @@ class EngineTests(unittest.TestCase):
         self.assertGreaterEqual(metrics.packets_sent, 12)
         self.assertGreater(metrics.collisions, 0)
         self.assertGreater(metrics.packets_lost, 0)
+        self.assertGreater(metrics.total_energy_joules, 0.0)
 
 
 if __name__ == "__main__":

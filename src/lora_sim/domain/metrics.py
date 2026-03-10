@@ -20,8 +20,25 @@ class PacketRecord:
     collided: bool
     corrupted: bool
     interfered: bool
+    path_limited: bool
+    overlap_count: int
+    dominant_interferer_db: float
     spreading_factor: int
     reason: str
+
+
+@dataclass(slots=True)
+class NodeEnergyProfile:
+    tx_airtime_seconds: float = 0.0
+    rx_airtime_seconds: float = 0.0
+    idle_time_seconds: float = 0.0
+    tx_energy_joules: float = 0.0
+    rx_energy_joules: float = 0.0
+    idle_energy_joules: float = 0.0
+
+    @property
+    def total_energy_joules(self) -> float:
+        return self.tx_energy_joules + self.rx_energy_joules + self.idle_energy_joules
 
 
 @dataclass(slots=True)
@@ -39,6 +56,7 @@ class SimulationMetrics:
     total_latency_seconds: float = 0.0
     packet_records: list[PacketRecord] = field(default_factory=list)
     node_delivery: dict[str, dict[str, float | int]] = field(default_factory=dict)
+    node_energy: dict[str, NodeEnergyProfile] = field(default_factory=dict)
 
     def record_packet(self, record: PacketRecord) -> None:
         self.packets_sent += 1
@@ -78,6 +96,10 @@ class SimulationMetrics:
             return 0.0
         return self.total_latency_seconds / self.packets_sent
 
+    @property
+    def total_energy_joules(self) -> float:
+        return sum(profile.total_energy_joules for profile in self.node_energy.values())
+
     def to_dict(self) -> dict[str, object]:
         return {
             "scenario_name": self.scenario_name,
@@ -92,6 +114,11 @@ class SimulationMetrics:
             "retries": self.retries,
             "total_airtime_seconds": self.total_airtime_seconds,
             "average_latency_seconds": self.average_latency_seconds,
+            "total_energy_joules": self.total_energy_joules,
             "node_delivery": self.node_delivery,
+            "node_energy": {
+                node_id: asdict(profile) | {"total_energy_joules": profile.total_energy_joules}
+                for node_id, profile in self.node_energy.items()
+            },
             "packet_records": [asdict(record) for record in self.packet_records],
         }

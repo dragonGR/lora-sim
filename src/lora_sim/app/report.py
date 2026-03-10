@@ -19,12 +19,19 @@ def render_text_report(metrics: SimulationMetrics) -> str:
         f"Retries: {metrics.retries}",
         f"Average Latency: {metrics.average_latency_seconds:.4f}s",
         f"Total Airtime: {metrics.total_airtime_seconds:.4f}s",
+        f"Total Energy: {metrics.total_energy_joules:.6f}J",
         "",
         "Per Node:",
     ]
-    for node_id, data in sorted(metrics.node_delivery.items()):
+    all_node_ids = sorted(set(metrics.node_delivery) | set(metrics.node_energy))
+    for node_id in all_node_ids:
+        data = metrics.node_delivery.get(node_id, {"sent": 0, "delivered": 0, "lost": 0})
+        energy = metrics.node_energy.get(node_id)
+        energy_text = ""
+        if energy is not None:
+            energy_text = f" energy={energy.total_energy_joules:.6f}J"
         lines.append(
-            f"  {node_id}: sent={data['sent']} delivered={data['delivered']} lost={data['lost']}"
+            f"  {node_id}: sent={data['sent']} delivered={data['delivered']} lost={data['lost']}{energy_text}"
         )
     return "\n".join(lines)
 

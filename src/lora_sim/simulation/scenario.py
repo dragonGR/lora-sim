@@ -7,7 +7,7 @@ from pathlib import Path
 from lora_sim.domain.channel import ChannelModel
 from lora_sim.domain.enums import NodeRole
 from lora_sim.domain.node import Node, TrafficProfile
-from lora_sim.domain.radio import RadioConfig
+from lora_sim.domain.radio import PowerProfile, RadioConfig
 from lora_sim.models.retry import RetryPolicy
 
 
@@ -55,12 +55,19 @@ def load_scenario(path: str | Path) -> Scenario:
 def _parse_node(raw: dict[str, object]) -> Node:
     traffic_raw = raw.get("traffic")
     traffic = TrafficProfile(**traffic_raw) if isinstance(traffic_raw, dict) else None
+    radio_raw = dict(raw.get("radio", {}))
+    power_profile_raw = radio_raw.pop("power_profile", None)
+    power_profile = (
+        PowerProfile(**power_profile_raw)
+        if isinstance(power_profile_raw, dict)
+        else PowerProfile()
+    )
     return Node(
         node_id=str(raw["node_id"]),
         x_m=float(raw.get("x_m", 0.0)),
         y_m=float(raw.get("y_m", 0.0)),
         role=NodeRole(str(raw.get("role", "end_device"))),
-        radio=RadioConfig(**raw.get("radio", {})),
+        radio=RadioConfig(power_profile=power_profile, **radio_raw),
         traffic=traffic,
         tags={str(key): str(value) for key, value in raw.get("tags", {}).items()},
     )

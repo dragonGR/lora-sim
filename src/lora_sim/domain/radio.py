@@ -10,6 +10,23 @@ SUPPORTED_BANDWIDTHS = (125_000, 250_000, 500_000)
 
 
 @dataclass(frozen=True, slots=True)
+class PowerProfile:
+    supply_voltage_v: float = 3.3
+    tx_current_ma: float = 120.0
+    rx_current_ma: float = 12.0
+    idle_current_ma: float = 0.015
+
+    def joules_for_tx(self, duration_seconds: float) -> float:
+        return self.supply_voltage_v * (self.tx_current_ma / 1000) * duration_seconds
+
+    def joules_for_rx(self, duration_seconds: float) -> float:
+        return self.supply_voltage_v * (self.rx_current_ma / 1000) * duration_seconds
+
+    def joules_for_idle(self, duration_seconds: float) -> float:
+        return self.supply_voltage_v * (self.idle_current_ma / 1000) * duration_seconds
+
+
+@dataclass(frozen=True, slots=True)
 class RadioConfig:
     frequency_hz: int = 868_100_000
     bandwidth_hz: int = 125_000
@@ -19,6 +36,7 @@ class RadioConfig:
     preamble_symbols: int = 8
     explicit_header: bool = True
     crc_enabled: bool = True
+    power_profile: PowerProfile = PowerProfile()
 
     def validate(self) -> None:
         if self.spreading_factor not in SUPPORTED_SPREADING_FACTORS:
