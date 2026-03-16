@@ -98,6 +98,7 @@ Scenario files are JSON documents that define:
 - nodes with coordinates, role, radio settings, power profile, and optional traffic profiles
 
 See [simple_link.json](/home/alex/Projects/lora-sim/scenarios/simple_link.json) and [multi_node_collision.json](/home/alex/Projects/lora-sim/scenarios/multi_node_collision.json) for working examples.
+Use [gateway_capacity.json](/home/alex/Projects/lora-sim/scenarios/gateway_capacity.json) to stress-test the gateway demodulation path limit with overlapping uplinks.
 
 ## Development
 
