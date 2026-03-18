@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 import random
 
+from lora_sim.domain.enums import NodeRole
 from lora_sim.domain.metrics import NodeEnergyProfile, PacketRecord, SimulationMetrics
 from lora_sim.domain.packet import Packet
 from lora_sim.domain.radio import RadioConfig
@@ -72,38 +73,35 @@ class SimulationEngine:
         assert isinstance(packet, Packet)
 
         source = self._node_map[packet.source_id]
-        destination = self._node_map[packet.destination_id]
         radio = self._radio_for_attempt(source.node_id, source.radio)
-        distance_m = source.distance_to(destination)
         airtime_seconds = radio.airtime_seconds(packet.size_bytes)
         tx_start_seconds = packet.created_at + (attempt - 1) * self.scenario.retry_policy.backoff_seconds
         tx_end_seconds = tx_start_seconds + airtime_seconds
-        rssi_dbm = received_signal_strength_dbm(radio, distance_m, self.scenario.channel)
-        snr_value_db = snr_db(rssi_dbm, self.scenario.channel)
-        reception = evaluate_gateway_reception(
-            active=self._active_transmissions,
-            candidate_packet_id=packet.packet_id,
-            candidate_destination_id=packet.destination_id,
-            candidate_start_seconds=tx_start_seconds,
-            candidate_end_seconds=tx_end_seconds,
-            candidate_frequency_hz=radio.frequency_hz,
-            candidate_rssi_dbm=rssi_dbm,
-            candidate_spreading_factor=radio.spreading_factor,
-            channel=self.scenario.channel,
+        candidate_gateways = self._resolve_candidate_gateways(packet.destination_id)
+        best_gateway, best_reception = self._select_gateway_reception(
+            packet=packet,
+            source=source,
+            candidate_gateways=candidate_gateways,
+            radio=radio,
+            tx_start_seconds=tx_start_seconds,
+            tx_end_seconds=tx_end_seconds,
         )
         interfered = self.rng.random() < self.scenario.channel.interference_probability
         self._record_tx_energy(packet.source_id, airtime_seconds)
-        self._record_rx_energy(packet.destination_id, airtime_seconds)
+        for gateway in candidate_gateways:
+            self._record_rx_energy(gateway.node_id, airtime_seconds)
 
+        tracked_gateway_id = best_gateway.node_id if best_gateway is not None else candidate_gateways[0].node_id
+        tracked_rssi = best_reception["rssi_dbm"] if best_reception is not None else -999.0
         self._active_transmissions.append(
             ActiveTransmission(
                 packet_id=packet.packet_id,
                 source_id=packet.source_id,
-                destination_id=packet.destination_id,
+                destination_id=tracked_gateway_id,
                 start_seconds=tx_start_seconds,
                 end_seconds=tx_end_seconds,
                 frequency_hz=radio.frequency_hz,
-                rssi_dbm=rssi_dbm,
+                rssi_dbm=tracked_rssi,
                 spreading_factor=radio.spreading_factor,
             )
         )
@@ -114,17 +112,20 @@ class SimulationEngine:
                 "packet": packet,
                 "attempt": attempt,
                 "radio": radio,
-                "distance_m": distance_m,
+                "distance_m": best_reception["distance_m"] if best_reception is not None else source.distance_to(candidate_gateways[0]),
                 "tx_start_seconds": tx_start_seconds,
                 "tx_end_seconds": tx_end_seconds,
                 "airtime_seconds": airtime_seconds,
-                "snr_db": snr_value_db,
-                "rssi_dbm": rssi_dbm,
-                "collided": reception.collided,
-                "path_limited": reception.path_limited,
-                "overlap_count": reception.overlap_count,
-                "dominant_interferer_db": reception.dominant_interferer_db,
+                "snr_db": best_reception["snr_db"] if best_reception is not None else -999.0,
+                "rssi_dbm": tracked_rssi,
+                "collided": best_reception["decision"].collided if best_reception is not None else True,
+                "path_limited": best_reception["decision"].path_limited if best_reception is not None else False,
+                "overlap_count": best_reception["decision"].overlap_count if best_reception is not None else 0,
+                "dominant_interferer_db": best_reception["decision"].dominant_interferer_db if best_reception is not None else 0.0,
+                "selected_gateway_id": best_gateway.node_id if best_gateway is not None else None,
+                "candidate_gateway_count": len(candidate_gateways),
                 "interfered": interfered,
+                "confirmed_messages": bool(source.traffic and source.traffic.confirmed_messages),
             },
         )
 
@@ -142,7 +143,10 @@ class SimulationEngine:
         path_limited = bool(payload["path_limited"])
         overlap_count = int(payload["overlap_count"])
         dominant_interferer_db = float(payload["dominant_interferer_db"])
+        selected_gateway_id = payload["selected_gateway_id"]
+        candidate_gateway_count = int(payload["candidate_gateway_count"])
         interfered = bool(payload["interfered"])
+        confirmed_messages = bool(payload["confirmed_messages"])
         assert isinstance(packet, Packet)
         assert isinstance(radio, RadioConfig)
 
@@ -152,7 +156,22 @@ class SimulationEngine:
 
         corrupted_packet, corrupted = maybe_corrupt_packet(packet, self.rng, self.scenario.channel)
         link_budget_ok = meets_link_budget(radio, snr_value_db, self.scenario.channel)
-        delivered = link_budget_ok and not collided and not interfered and corrupted_packet.is_valid()
+        uplink_delivered = (
+            selected_gateway_id is not None
+            and link_budget_ok
+            and not collided
+            and not interfered
+            and corrupted_packet.is_valid()
+        )
+        ack_requested = confirmed_messages and self.scenario.ack_model.enabled and uplink_delivered
+        ack_received, ack_gateway_id, ack_latency_seconds = self._resolve_ack(
+            packet=packet,
+            selected_gateway_id=selected_gateway_id,
+            uplink_end_seconds=tx_end_seconds,
+            source_radio=radio,
+            confirmed_messages=confirmed_messages,
+        )
+        delivered = uplink_delivered and (not ack_requested or ack_received)
 
         reason = "delivered"
         if not link_budget_ok:
@@ -165,8 +184,8 @@ class SimulationEngine:
             reason = "interference"
         elif corrupted:
             reason = "corruption"
-        elif delivered:
-            reason = "delivered"
+        elif ack_requested and not ack_received:
+            reason = "ack_timeout"
 
         record = PacketRecord(
             packet_id=packet.packet_id,
@@ -175,18 +194,25 @@ class SimulationEngine:
             attempt=attempt,
             tx_start_seconds=tx_start_seconds,
             tx_end_seconds=tx_end_seconds,
-            delivery_latency_seconds=tx_end_seconds - packet.created_at,
+            delivery_latency_seconds=ack_latency_seconds if ack_received else tx_end_seconds - packet.created_at,
             airtime_seconds=airtime_seconds,
             distance_m=distance_m,
             snr_db=snr_value_db,
             rssi_dbm=rssi_dbm,
             delivered=delivered,
+            uplink_delivered=uplink_delivered,
+            ack_requested=ack_requested,
+            ack_received=ack_received,
+            ack_gateway_id=ack_gateway_id,
+            ack_latency_seconds=ack_latency_seconds,
             collided=collided,
             corrupted=corrupted,
             interfered=interfered,
             path_limited=path_limited,
             overlap_count=overlap_count,
             dominant_interferer_db=dominant_interferer_db,
+            selected_gateway_id=selected_gateway_id,
+            candidate_gateway_count=candidate_gateway_count,
             spreading_factor=radio.spreading_factor,
             reason=reason,
         )
@@ -210,6 +236,91 @@ class SimulationEngine:
     def _radio_for_attempt(self, node_id: str, fallback: RadioConfig) -> RadioConfig:
         node = self._node_map[node_id]
         return node.radio if node.radio else fallback
+
+    def _resolve_candidate_gateways(self, destination_id: str) -> list:
+        if destination_id in self._node_map:
+            return [self._node_map[destination_id]]
+        gateways = [node for node in self.scenario.nodes if node.role == NodeRole.GATEWAY]
+        if not gateways:
+            raise ValueError("Scenario has no gateways")
+        return gateways
+
+    def _select_gateway_reception(
+        self,
+        packet: Packet,
+        source,
+        candidate_gateways: list,
+        radio: RadioConfig,
+        tx_start_seconds: float,
+        tx_end_seconds: float,
+    ):
+        best_gateway = None
+        best_reception = None
+        for gateway in candidate_gateways:
+            distance_m = source.distance_to(gateway)
+            rssi_dbm = received_signal_strength_dbm(radio, distance_m, self.scenario.channel)
+            snr_value_db = snr_db(rssi_dbm, self.scenario.channel)
+            decision = evaluate_gateway_reception(
+                active=self._active_transmissions,
+                candidate_packet_id=packet.packet_id,
+                candidate_destination_id=gateway.node_id,
+                candidate_start_seconds=tx_start_seconds,
+                candidate_end_seconds=tx_end_seconds,
+                candidate_frequency_hz=radio.frequency_hz,
+                candidate_rssi_dbm=rssi_dbm,
+                candidate_spreading_factor=radio.spreading_factor,
+                channel=self.scenario.channel,
+            )
+            reception = {
+                "gateway": gateway,
+                "distance_m": distance_m,
+                "rssi_dbm": rssi_dbm,
+                "snr_db": snr_value_db,
+                "decision": decision,
+            }
+            cleaner_than_best = (
+                best_reception is not None
+                and not decision.collided
+                and not decision.path_limited
+                and (
+                    best_reception["decision"].collided
+                    or best_reception["decision"].path_limited
+                )
+            )
+            if best_reception is None or cleaner_than_best or rssi_dbm > best_reception["rssi_dbm"]:
+                best_gateway = gateway
+                best_reception = reception
+        return best_gateway, best_reception
+
+    def _resolve_ack(
+        self,
+        packet: Packet,
+        selected_gateway_id: str | None,
+        uplink_end_seconds: float,
+        source_radio: RadioConfig,
+        confirmed_messages: bool,
+    ) -> tuple[bool, str | None, float]:
+        if not confirmed_messages or not self.scenario.ack_model.enabled or selected_gateway_id is None:
+            return False, None, 0.0
+
+        gateway = self._node_map[selected_gateway_id]
+        source = self._node_map[packet.source_id]
+        ack_start_seconds = uplink_end_seconds + self.scenario.ack_model.rx1_delay_seconds
+        ack_airtime_seconds = gateway.radio.airtime_seconds(self.scenario.ack_model.payload_size_bytes)
+        ack_end_seconds = ack_start_seconds + ack_airtime_seconds
+        downlink_rssi_dbm = received_signal_strength_dbm(
+            gateway.radio,
+            gateway.distance_to(source),
+            self.scenario.channel,
+        )
+        downlink_snr_db = snr_db(downlink_rssi_dbm, self.scenario.channel)
+        downlink_ok = meets_link_budget(source_radio, downlink_snr_db, self.scenario.channel)
+        interfered = self.rng.random() < self.scenario.ack_model.downlink_interference_probability
+        self._record_tx_energy(gateway.node_id, ack_airtime_seconds)
+        self._record_rx_energy(source.node_id, ack_airtime_seconds)
+        ack_received = downlink_ok and not interfered and ack_end_seconds <= self.scenario.duration_seconds
+        ack_latency_seconds = ack_end_seconds - packet.created_at if ack_received else 0.0
+        return ack_received, gateway.node_id, ack_latency_seconds
 
     def _push(self, event_type: str, event_time: float, payload: dict[str, object]) -> None:
         self._event_priority += 1

@@ -12,17 +12,25 @@ def render_text_report(metrics: SimulationMetrics) -> str:
         f"Packets Sent: {metrics.packets_sent}",
         f"Packets Delivered: {metrics.packets_delivered}",
         f"Packets Lost: {metrics.packets_lost}",
+        f"Uplinks Delivered: {metrics.uplinks_delivered}",
         f"Delivery Rate: {metrics.delivery_rate * 100:.2f}%",
         f"Collisions: {metrics.collisions}",
         f"Corruptions: {metrics.corruptions}",
         f"Interference Losses: {metrics.interference_losses}",
         f"Retries: {metrics.retries}",
+        f"ACK Requests: {metrics.ack_requests}",
+        f"ACK Successes: {metrics.ack_successes}",
+        f"ACK Failures: {metrics.ack_failures}",
         f"Average Latency: {metrics.average_latency_seconds:.4f}s",
         f"Total Airtime: {metrics.total_airtime_seconds:.4f}s",
         f"Total Energy: {metrics.total_energy_joules:.6f}J",
         "",
-        "Per Node:",
+        "Per Gateway:",
     ]
+    for gateway_id, data in sorted(metrics.gateway_receptions.items()):
+        lines.append(f"  {gateway_id}: uplinks={data['uplinks']} acks={data['acks']}")
+
+    lines.extend(["", "Per Node:"])
     all_node_ids = sorted(set(metrics.node_delivery) | set(metrics.node_energy))
     for node_id in all_node_ids:
         data = metrics.node_delivery.get(node_id, {"sent": 0, "delivered": 0, "lost": 0})

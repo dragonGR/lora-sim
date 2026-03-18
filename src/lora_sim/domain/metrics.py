@@ -17,12 +17,19 @@ class PacketRecord:
     snr_db: float
     rssi_dbm: float
     delivered: bool
+    uplink_delivered: bool
+    ack_requested: bool
+    ack_received: bool
+    ack_gateway_id: str | None
+    ack_latency_seconds: float
     collided: bool
     corrupted: bool
     interfered: bool
     path_limited: bool
     overlap_count: int
     dominant_interferer_db: float
+    selected_gateway_id: str | None
+    candidate_gateway_count: int
     spreading_factor: int
     reason: str
 
@@ -48,15 +55,20 @@ class SimulationMetrics:
     packets_sent: int = 0
     packets_delivered: int = 0
     packets_lost: int = 0
+    uplinks_delivered: int = 0
     collisions: int = 0
     corruptions: int = 0
     interference_losses: int = 0
     retries: int = 0
+    ack_requests: int = 0
+    ack_successes: int = 0
+    ack_failures: int = 0
     total_airtime_seconds: float = 0.0
     total_latency_seconds: float = 0.0
     packet_records: list[PacketRecord] = field(default_factory=list)
     node_delivery: dict[str, dict[str, float | int]] = field(default_factory=dict)
     node_energy: dict[str, NodeEnergyProfile] = field(default_factory=dict)
+    gateway_receptions: dict[str, dict[str, int]] = field(default_factory=dict)
 
     def record_packet(self, record: PacketRecord) -> None:
         self.packets_sent += 1
@@ -71,6 +83,14 @@ class SimulationMetrics:
 
         if record.attempt > 1:
             self.retries += 1
+        if record.uplink_delivered:
+            self.uplinks_delivered += 1
+        if record.ack_requested:
+            self.ack_requests += 1
+        if record.ack_received:
+            self.ack_successes += 1
+        elif record.ack_requested:
+            self.ack_failures += 1
         if record.delivered:
             self.packets_delivered += 1
             node_metrics["delivered"] += 1
@@ -83,6 +103,15 @@ class SimulationMetrics:
             self.corruptions += 1
         if record.interfered:
             self.interference_losses += 1
+        if record.selected_gateway_id is not None:
+            gateway_metrics = self.gateway_receptions.setdefault(
+                record.selected_gateway_id,
+                {"uplinks": 0, "acks": 0},
+            )
+            if record.uplink_delivered:
+                gateway_metrics["uplinks"] += 1
+            if record.ack_received:
+                gateway_metrics["acks"] += 1
 
     @property
     def delivery_rate(self) -> float:
@@ -107,15 +136,20 @@ class SimulationMetrics:
             "packets_sent": self.packets_sent,
             "packets_delivered": self.packets_delivered,
             "packets_lost": self.packets_lost,
+            "uplinks_delivered": self.uplinks_delivered,
             "delivery_rate": self.delivery_rate,
             "collisions": self.collisions,
             "corruptions": self.corruptions,
             "interference_losses": self.interference_losses,
             "retries": self.retries,
+            "ack_requests": self.ack_requests,
+            "ack_successes": self.ack_successes,
+            "ack_failures": self.ack_failures,
             "total_airtime_seconds": self.total_airtime_seconds,
             "average_latency_seconds": self.average_latency_seconds,
             "total_energy_joules": self.total_energy_joules,
             "node_delivery": self.node_delivery,
+            "gateway_receptions": self.gateway_receptions,
             "node_energy": {
                 node_id: asdict(profile) | {"total_energy_joules": profile.total_energy_joules}
                 for node_id, profile in self.node_energy.items()

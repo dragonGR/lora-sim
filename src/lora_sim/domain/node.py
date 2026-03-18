@@ -13,6 +13,7 @@ class TrafficProfile:
     start_time_seconds: float = 0.0
     payload_size_bytes: int = 16
     destination_id: str = "gateway"
+    confirmed_messages: bool = True
 
 
 @dataclass(slots=True)

@@ -12,11 +12,20 @@ from lora_sim.models.retry import RetryPolicy
 
 
 @dataclass(slots=True)
+class AckModel:
+    enabled: bool = True
+    rx1_delay_seconds: float = 1.0
+    payload_size_bytes: int = 2
+    downlink_interference_probability: float = 0.01
+
+
+@dataclass(slots=True)
 class Scenario:
     name: str
     duration_seconds: float
     seed: int
     channel: ChannelModel
+    ack_model: AckModel = field(default_factory=AckModel)
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
     nodes: list[Node] = field(default_factory=list)
 
@@ -38,6 +47,7 @@ class Scenario:
 def load_scenario(path: str | Path) -> Scenario:
     raw = json.loads(Path(path).read_text())
     channel = ChannelModel(**raw.get("channel", {}))
+    ack_model = AckModel(**raw.get("ack_model", {}))
     retry_policy = RetryPolicy(**raw.get("retry_policy", {}))
     nodes = [_parse_node(node_raw) for node_raw in raw["nodes"]]
     scenario = Scenario(
@@ -45,6 +55,7 @@ def load_scenario(path: str | Path) -> Scenario:
         duration_seconds=raw.get("duration_seconds", 60.0),
         seed=raw.get("seed", 42),
         channel=channel,
+        ack_model=ack_model,
         retry_policy=retry_policy,
         nodes=nodes,
     )

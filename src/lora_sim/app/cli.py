@@ -107,13 +107,18 @@ def _json_results_to_html(raw_json: str) -> str:
     metrics.packets_sent = data["packets_sent"]
     metrics.packets_delivered = data["packets_delivered"]
     metrics.packets_lost = data["packets_lost"]
+    metrics.uplinks_delivered = data.get("uplinks_delivered", 0)
     metrics.collisions = data["collisions"]
     metrics.corruptions = data["corruptions"]
     metrics.interference_losses = data["interference_losses"]
     metrics.retries = data["retries"]
+    metrics.ack_requests = data.get("ack_requests", 0)
+    metrics.ack_successes = data.get("ack_successes", 0)
+    metrics.ack_failures = data.get("ack_failures", 0)
     metrics.total_airtime_seconds = data["total_airtime_seconds"]
     metrics.total_latency_seconds = data["average_latency_seconds"] * max(data["packets_sent"], 1)
     metrics.node_delivery = data.get("node_delivery", {})
+    metrics.gateway_receptions = data.get("gateway_receptions", {})
     from lora_sim.domain.metrics import NodeEnergyProfile
 
     metrics.node_energy = {
@@ -142,7 +147,7 @@ def _render_sweep_summary(results: list[dict[str, float | int | str]]) -> str:
             "  "
             f"{item['parameter']}={item['value']}: "
             f"delivery={float(item['delivery_rate']) * 100:.2f}% "
-            f"collisions={item['collisions']} retries={item['retries']}"
+            f"collisions={item['collisions']} retries={item['retries']} acks={item['ack_successes']}"
         )
     return "\n".join(lines)
 
@@ -151,12 +156,13 @@ def _render_compare_summary(left_metrics, right_metrics) -> str:
     delivery_delta = (right_metrics.delivery_rate - left_metrics.delivery_rate) * 100
     collision_delta = right_metrics.collisions - left_metrics.collisions
     retry_delta = right_metrics.retries - left_metrics.retries
+    ack_delta = right_metrics.ack_successes - left_metrics.ack_successes
     return "\n".join(
         [
             "Comparison:",
-            f"  Left:  {left_metrics.scenario_name} delivery={left_metrics.delivery_rate * 100:.2f}% collisions={left_metrics.collisions} retries={left_metrics.retries} energy={left_metrics.total_energy_joules:.6f}J",
-            f"  Right: {right_metrics.scenario_name} delivery={right_metrics.delivery_rate * 100:.2f}% collisions={right_metrics.collisions} retries={right_metrics.retries} energy={right_metrics.total_energy_joules:.6f}J",
-            f"  Delta: delivery={delivery_delta:+.2f}pp collisions={collision_delta:+d} retries={retry_delta:+d}",
+            f"  Left:  {left_metrics.scenario_name} delivery={left_metrics.delivery_rate * 100:.2f}% collisions={left_metrics.collisions} retries={left_metrics.retries} acks={left_metrics.ack_successes} energy={left_metrics.total_energy_joules:.6f}J",
+            f"  Right: {right_metrics.scenario_name} delivery={right_metrics.delivery_rate * 100:.2f}% collisions={right_metrics.collisions} retries={right_metrics.retries} acks={right_metrics.ack_successes} energy={right_metrics.total_energy_joules:.6f}J",
+            f"  Delta: delivery={delivery_delta:+.2f}pp collisions={collision_delta:+d} retries={retry_delta:+d} acks={ack_delta:+d}",
         ]
     )
 
@@ -171,6 +177,7 @@ def _render_monte_carlo_summary(results: dict[str, object]) -> str:
             f"  Mean Delivery: {float(results['mean_delivery_rate']) * 100:.2f}%",
             f"  Mean Collisions: {float(results['mean_collisions']):.2f}",
             f"  Mean Retries: {float(results['mean_retries']):.2f}",
+            f"  Mean ACK Successes: {float(results['mean_ack_successes']):.2f}",
             f"  Mean Energy: {float(results['mean_total_energy_joules']):.6f}J",
         ]
     )

@@ -45,6 +45,7 @@ def sweep_scenario(
                 "value": value,
                 "packets_sent": metrics.packets_sent,
                 "packets_delivered": metrics.packets_delivered,
+                "ack_successes": metrics.ack_successes,
                 "delivery_rate": metrics.delivery_rate,
                 "collisions": metrics.collisions,
                 "retries": metrics.retries,
@@ -72,6 +73,7 @@ def monte_carlo_scenario(
                 "delivery_rate": metrics.delivery_rate,
                 "collisions": metrics.collisions,
                 "retries": metrics.retries,
+                "ack_successes": metrics.ack_successes,
                 "total_energy_joules": metrics.total_energy_joules,
             }
         )
@@ -82,6 +84,7 @@ def monte_carlo_scenario(
         "mean_delivery_rate": _mean(item["delivery_rate"] for item in summaries),
         "mean_collisions": _mean(item["collisions"] for item in summaries),
         "mean_retries": _mean(item["retries"] for item in summaries),
+        "mean_ack_successes": _mean(item["ack_successes"] for item in summaries),
         "mean_total_energy_joules": _mean(item["total_energy_joules"] for item in summaries),
         "runs": summaries,
     }
