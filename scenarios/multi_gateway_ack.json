@@ -1,0 +1,69 @@
+{
+  "name": "Multi gateway confirmed uplink",
+  "seed": 33,
+  "duration_seconds": 18,
+  "ack_model": {
+    "enabled": true,
+    "rx1_delay_seconds": 1.0,
+    "payload_size_bytes": 2,
+    "downlink_interference_probability": 0.0
+  },
+  "channel": {
+    "noise_floor_dbm": -118.0,
+    "path_loss_exponent": 2.5,
+    "interference_probability": 0.01,
+    "corruption_probability": 0.0,
+    "gateway_demodulation_paths": 4,
+    "capture_threshold_db": 6.0,
+    "sf_orthogonality_margin_db": 8.0,
+    "snr_margin_db": 0.0
+  },
+  "retry_policy": {
+    "max_attempts": 2,
+    "backoff_seconds": 0.3
+  },
+  "nodes": [
+    {
+      "node_id": "sensor-a",
+      "role": "end_device",
+      "x_m": 0,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      },
+      "traffic": {
+        "packet_count": 6,
+        "interval_seconds": 1.2,
+        "payload_size_bytes": 18,
+        "destination_id": "gateway"
+      }
+    },
+    {
+      "node_id": "gateway-west",
+      "role": "gateway",
+      "x_m": 900,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      }
+    },
+    {
+      "node_id": "gateway-east",
+      "role": "gateway",
+      "x_m": 1250,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      }
+    }
+  ]
+}

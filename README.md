@@ -9,6 +9,8 @@
 - Supports multi-node scenarios and collision pressure
 - Tracks per-node radio energy for transmit, receive, and idle phases
 - Supports Monte Carlo runs for repeatable benchmark aggregates
+- Supports multi-gateway reception and gateway-level accounting
+- Models confirmed uplinks with RX1 ACK timing
 - Produces structured JSON or CSV outputs for analysis pipelines
 - Generates lightweight HTML reports for sharing run results
 
@@ -88,17 +90,26 @@ Run a Monte Carlo batch:
 lora-sim monte-carlo scenarios/multi_node_collision.json --iterations 20 --seed 100
 ```
 
+Run a multi-gateway confirmed-uplink scenario:
+
+```bash
+lora-sim run scenarios/multi_gateway_ack.json
+```
+
 ## Scenario format
 
 Scenario files are JSON documents that define:
 
 - simulation metadata such as `name`, `duration_seconds`, and `seed`
 - channel behavior such as `noise_floor_dbm`, `path_loss_exponent`, interference settings, and gateway demodulation capacity
+- ACK behavior through `ack_model`, including RX1 delay and downlink interference probability
 - retry policy with `max_attempts` and `backoff_seconds`
 - nodes with coordinates, role, radio settings, power profile, and optional traffic profiles
+  `traffic.confirmed_messages` controls whether a node waits for gateway ACKs before the uplink attempt is considered successful
 
 See [simple_link.json](/home/alex/Projects/lora-sim/scenarios/simple_link.json) and [multi_node_collision.json](/home/alex/Projects/lora-sim/scenarios/multi_node_collision.json) for working examples.
 Use [gateway_capacity.json](/home/alex/Projects/lora-sim/scenarios/gateway_capacity.json) to stress-test the gateway demodulation path limit with overlapping uplinks.
+Use [multi_gateway_ack.json](/home/alex/Projects/lora-sim/scenarios/multi_gateway_ack.json) to exercise gateway diversity with confirmed uplinks and ACK timing.
 
 ## Development
 
