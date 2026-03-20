@@ -16,6 +16,7 @@ class GatewayAndAckTests(unittest.TestCase):
         self.assertEqual(metrics.ack_requests, metrics.packets_sent)
         self.assertEqual(metrics.ack_successes, metrics.packets_delivered)
         self.assertEqual(metrics.ack_failures, 0)
+        self.assertLessEqual(metrics.ack_successes, metrics.ack_requests)
 
 
 if __name__ == "__main__":

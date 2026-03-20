@@ -1,0 +1,63 @@
+{
+  "name": "Duty cycle and RX2 fallback",
+  "seed": 55,
+  "duration_seconds": 20,
+  "ack_model": {
+    "enabled": true,
+    "rx1_delay_seconds": 1.0,
+    "payload_size_bytes": 2,
+    "downlink_interference_probability": 1.0,
+    "rx2_enabled": true,
+    "rx2_delay_seconds": 2.0,
+    "rx2_frequency_hz": 869525000,
+    "rx2_spreading_factor": 12
+  },
+  "channel": {
+    "noise_floor_dbm": -118.0,
+    "path_loss_exponent": 2.5,
+    "interference_probability": 0.0,
+    "corruption_probability": 0.0,
+    "gateway_demodulation_paths": 4,
+    "capture_threshold_db": 6.0,
+    "sf_orthogonality_margin_db": 8.0,
+    "snr_margin_db": 0.0,
+    "duty_cycle_fraction": 0.1,
+    "channel_guard_seconds": 0.1
+  },
+  "retry_policy": {
+    "max_attempts": 2,
+    "backoff_seconds": 0.2
+  },
+  "nodes": [
+    {
+      "node_id": "sensor-a",
+      "role": "end_device",
+      "x_m": 0,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      },
+      "traffic": {
+        "packet_count": 5,
+        "interval_seconds": 0.25,
+        "payload_size_bytes": 18,
+        "destination_id": "gateway"
+      }
+    },
+    {
+      "node_id": "gateway",
+      "role": "gateway",
+      "x_m": 1050,
+      "y_m": 0,
+      "radio": {
+        "frequency_hz": 868100000,
+        "bandwidth_hz": 125000,
+        "spreading_factor": 9,
+        "tx_power_dbm": 14
+      }
+    }
+  ]
+}
