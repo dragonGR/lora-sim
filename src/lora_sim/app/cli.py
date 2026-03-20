@@ -115,8 +115,13 @@ def _json_results_to_html(raw_json: str) -> str:
     metrics.ack_requests = data.get("ack_requests", 0)
     metrics.ack_successes = data.get("ack_successes", 0)
     metrics.ack_failures = data.get("ack_failures", 0)
+    metrics.rx2_successes = data.get("rx2_successes", 0)
+    metrics.duty_cycle_delays = data.get("duty_cycle_delays", 0)
+    metrics.channel_busy_delays = data.get("channel_busy_delays", 0)
     metrics.total_airtime_seconds = data["total_airtime_seconds"]
     metrics.total_latency_seconds = data["average_latency_seconds"] * max(data["packets_sent"], 1)
+    metrics.total_duty_cycle_wait_seconds = data.get("total_duty_cycle_wait_seconds", 0.0)
+    metrics.total_channel_busy_wait_seconds = data.get("total_channel_busy_wait_seconds", 0.0)
     metrics.node_delivery = data.get("node_delivery", {})
     metrics.gateway_receptions = data.get("gateway_receptions", {})
     from lora_sim.domain.metrics import NodeEnergyProfile
@@ -157,12 +162,13 @@ def _render_compare_summary(left_metrics, right_metrics) -> str:
     collision_delta = right_metrics.collisions - left_metrics.collisions
     retry_delta = right_metrics.retries - left_metrics.retries
     ack_delta = right_metrics.ack_successes - left_metrics.ack_successes
+    rx2_delta = right_metrics.rx2_successes - left_metrics.rx2_successes
     return "\n".join(
         [
             "Comparison:",
-            f"  Left:  {left_metrics.scenario_name} delivery={left_metrics.delivery_rate * 100:.2f}% collisions={left_metrics.collisions} retries={left_metrics.retries} acks={left_metrics.ack_successes} energy={left_metrics.total_energy_joules:.6f}J",
-            f"  Right: {right_metrics.scenario_name} delivery={right_metrics.delivery_rate * 100:.2f}% collisions={right_metrics.collisions} retries={right_metrics.retries} acks={right_metrics.ack_successes} energy={right_metrics.total_energy_joules:.6f}J",
-            f"  Delta: delivery={delivery_delta:+.2f}pp collisions={collision_delta:+d} retries={retry_delta:+d} acks={ack_delta:+d}",
+            f"  Left:  {left_metrics.scenario_name} delivery={left_metrics.delivery_rate * 100:.2f}% collisions={left_metrics.collisions} retries={left_metrics.retries} acks={left_metrics.ack_successes} rx2={left_metrics.rx2_successes} energy={left_metrics.total_energy_joules:.6f}J",
+            f"  Right: {right_metrics.scenario_name} delivery={right_metrics.delivery_rate * 100:.2f}% collisions={right_metrics.collisions} retries={right_metrics.retries} acks={right_metrics.ack_successes} rx2={right_metrics.rx2_successes} energy={right_metrics.total_energy_joules:.6f}J",
+            f"  Delta: delivery={delivery_delta:+.2f}pp collisions={collision_delta:+d} retries={retry_delta:+d} acks={ack_delta:+d} rx2={rx2_delta:+d}",
         ]
     )
 
@@ -178,6 +184,7 @@ def _render_monte_carlo_summary(results: dict[str, object]) -> str:
             f"  Mean Collisions: {float(results['mean_collisions']):.2f}",
             f"  Mean Retries: {float(results['mean_retries']):.2f}",
             f"  Mean ACK Successes: {float(results['mean_ack_successes']):.2f}",
+            f"  Mean RX2 Successes: {float(results['mean_rx2_successes']):.2f}",
             f"  Mean Energy: {float(results['mean_total_energy_joules']):.6f}J",
         ]
     )

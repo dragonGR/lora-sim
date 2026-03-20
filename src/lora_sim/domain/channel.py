@@ -15,3 +15,5 @@ class ChannelModel:
     capture_threshold_db: float = 6.0
     sf_orthogonality_margin_db: float = 10.0
     gateway_demodulation_paths: int = 8
+    duty_cycle_fraction: float = 1.0
+    channel_guard_seconds: float = 0.0

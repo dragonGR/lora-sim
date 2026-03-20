@@ -17,6 +17,10 @@ class AckModel:
     rx1_delay_seconds: float = 1.0
     payload_size_bytes: int = 2
     downlink_interference_probability: float = 0.01
+    rx2_enabled: bool = True
+    rx2_delay_seconds: float = 2.0
+    rx2_frequency_hz: int = 869_525_000
+    rx2_spreading_factor: int = 12
 
 
 @dataclass(slots=True)

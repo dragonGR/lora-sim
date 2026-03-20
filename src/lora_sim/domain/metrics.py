@@ -22,6 +22,7 @@ class PacketRecord:
     ack_received: bool
     ack_gateway_id: str | None
     ack_latency_seconds: float
+    ack_window: str | None
     collided: bool
     corrupted: bool
     interfered: bool
@@ -30,6 +31,8 @@ class PacketRecord:
     dominant_interferer_db: float
     selected_gateway_id: str | None
     candidate_gateway_count: int
+    duty_cycle_wait_seconds: float
+    channel_busy_wait_seconds: float
     spreading_factor: int
     reason: str
 
@@ -63,8 +66,13 @@ class SimulationMetrics:
     ack_requests: int = 0
     ack_successes: int = 0
     ack_failures: int = 0
+    rx2_successes: int = 0
+    duty_cycle_delays: int = 0
+    channel_busy_delays: int = 0
     total_airtime_seconds: float = 0.0
     total_latency_seconds: float = 0.0
+    total_duty_cycle_wait_seconds: float = 0.0
+    total_channel_busy_wait_seconds: float = 0.0
     packet_records: list[PacketRecord] = field(default_factory=list)
     node_delivery: dict[str, dict[str, float | int]] = field(default_factory=dict)
     node_energy: dict[str, NodeEnergyProfile] = field(default_factory=dict)
@@ -74,6 +82,8 @@ class SimulationMetrics:
         self.packets_sent += 1
         self.total_airtime_seconds += record.airtime_seconds
         self.total_latency_seconds += record.delivery_latency_seconds
+        self.total_duty_cycle_wait_seconds += record.duty_cycle_wait_seconds
+        self.total_channel_busy_wait_seconds += record.channel_busy_wait_seconds
         self.packet_records.append(record)
         node_metrics = self.node_delivery.setdefault(
             record.source_id,
@@ -89,8 +99,14 @@ class SimulationMetrics:
             self.ack_requests += 1
         if record.ack_received:
             self.ack_successes += 1
+            if record.ack_window == "rx2":
+                self.rx2_successes += 1
         elif record.ack_requested:
             self.ack_failures += 1
+        if record.duty_cycle_wait_seconds > 0:
+            self.duty_cycle_delays += 1
+        if record.channel_busy_wait_seconds > 0:
+            self.channel_busy_delays += 1
         if record.delivered:
             self.packets_delivered += 1
             node_metrics["delivered"] += 1
@@ -145,8 +161,13 @@ class SimulationMetrics:
             "ack_requests": self.ack_requests,
             "ack_successes": self.ack_successes,
             "ack_failures": self.ack_failures,
+            "rx2_successes": self.rx2_successes,
+            "duty_cycle_delays": self.duty_cycle_delays,
+            "channel_busy_delays": self.channel_busy_delays,
             "total_airtime_seconds": self.total_airtime_seconds,
             "average_latency_seconds": self.average_latency_seconds,
+            "total_duty_cycle_wait_seconds": self.total_duty_cycle_wait_seconds,
+            "total_channel_busy_wait_seconds": self.total_channel_busy_wait_seconds,
             "total_energy_joules": self.total_energy_joules,
             "node_delivery": self.node_delivery,
             "gateway_receptions": self.gateway_receptions,
