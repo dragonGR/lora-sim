@@ -116,10 +116,10 @@ Scenario files are JSON documents that define:
 - nodes with coordinates, role, radio settings, power profile, and optional traffic profiles
   `traffic.confirmed_messages` controls whether a node waits for gateway ACKs before the uplink attempt is considered successful
 
-See [simple_link.json](/home/alex/Projects/lora-sim/scenarios/simple_link.json) and [multi_node_collision.json](/home/alex/Projects/lora-sim/scenarios/multi_node_collision.json) for working examples.
-Use [gateway_capacity.json](/home/alex/Projects/lora-sim/scenarios/gateway_capacity.json) to stress-test the gateway demodulation path limit with overlapping uplinks.
-Use [multi_gateway_ack.json](/home/alex/Projects/lora-sim/scenarios/multi_gateway_ack.json) to exercise gateway diversity with confirmed uplinks and ACK timing.
-Use [duty_cycle_rx2.json](/home/alex/Projects/lora-sim/scenarios/duty_cycle_rx2.json) to validate duty-cycle scheduling and RX2 ACK recovery.
+See [simple_link.json](scenarios/simple_link.json) and [multi_node_collision.json](scenarios/multi_node_collision.json) for working examples.
+Use [gateway_capacity.json](scenarios/gateway_capacity.json) to stress-test the gateway demodulation path limit with overlapping uplinks.
+Use [multi_gateway_ack.json](scenarios/multi_gateway_ack.json) to exercise gateway diversity with confirmed uplinks and ACK timing.
+Use [duty_cycle_rx2.json](scenarios/duty_cycle_rx2.json) to validate duty-cycle scheduling and RX2 ACK recovery.
 
 ## Development
 
